@@ -1,0 +1,42 @@
+[
+  {
+    "id": "alert_001",
+    "type": "CRITICAL",
+    "title": "High Flood Risk on A.P.C. Road",
+    "detail": "Est. water depth 0.30 m",
+    "location": "A.P.C. Road, Kolkata",
+    "time": "10 min ago",
+    "timestamp": "2026-09-04T11:40:00Z",
+    "active": true
+  },
+  {
+    "id": "alert_002",
+    "type": "HIGH",
+    "title": "Water Logging near Sealdah",
+    "detail": "Traffic movement affected",
+    "location": "Sealdah, Kolkata",
+    "time": "25 min ago",
+    "timestamp": "2026-09-04T11:25:00Z",
+    "active": true
+  },
+  {
+    "id": "alert_003",
+    "type": "MODERATE",
+    "title": "Heavy Rainfall Expected",
+    "detail": "Next 2 hours (IMD forecast)",
+    "location": "Kolkata Metropolitan Area",
+    "time": "40 min ago",
+    "timestamp": "2026-09-04T11:10:00Z",
+    "active": true
+  },
+  {
+    "id": "alert_004",
+    "type": "MODERATE",
+    "title": "Drainage Stress High in Central Zones",
+    "detail": "Avoid low-lying areas",
+    "location": "Central Kolkata",
+    "time": "1 hr ago",
+    "timestamp": "2026-09-04T10:50:00Z",
+    "active": true
+  }
+]

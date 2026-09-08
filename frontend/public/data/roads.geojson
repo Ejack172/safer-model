@@ -1,0 +1,288 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "source": "SIMULATED",
+    "area": "Kolkata, West Bengal, India",
+    "note": "SIH 2026 Prototype – Simulated road network with flood risk attributes. Not for operational use.",
+    "crs": "EPSG:4326"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "road_001",
+      "properties": {
+        "name": "A.P.C. Road",
+        "zone": "Central",
+        "elevation": 3.2,
+        "slope": 0.002,
+        "runoffCoeff": 0.88,
+        "drainageCapacity": 0.45,
+        "baseRisk": "HIGH",
+        "catchmentArea": 12.5,
+        "historicalFlood": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3629, 22.5726],
+          [88.3680, 22.5750],
+          [88.3720, 22.5770]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_002",
+      "properties": {
+        "name": "Howrah Bridge Road",
+        "zone": "West",
+        "elevation": 5.1,
+        "slope": 0.005,
+        "runoffCoeff": 0.75,
+        "drainageCapacity": 0.82,
+        "baseRisk": "MODERATE",
+        "catchmentArea": 8.2,
+        "historicalFlood": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3271, 22.5850],
+          [88.3350, 22.5832],
+          [88.3460, 22.5810]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_003",
+      "properties": {
+        "name": "Park Street",
+        "zone": "South-Central",
+        "elevation": 6.8,
+        "slope": 0.008,
+        "runoffCoeff": 0.72,
+        "drainageCapacity": 0.90,
+        "baseRisk": "LOW",
+        "catchmentArea": 6.5,
+        "historicalFlood": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3462, 22.5520],
+          [88.3550, 22.5525],
+          [88.3650, 22.5530]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_004",
+      "properties": {
+        "name": "Sealdah Road",
+        "zone": "East-Central",
+        "elevation": 2.9,
+        "slope": 0.001,
+        "runoffCoeff": 0.91,
+        "drainageCapacity": 0.35,
+        "baseRisk": "CRITICAL",
+        "catchmentArea": 18.0,
+        "historicalFlood": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3697, 22.5648],
+          [88.3740, 22.5660],
+          [88.3780, 22.5680]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_005",
+      "properties": {
+        "name": "Esplanade Road",
+        "zone": "Central",
+        "elevation": 4.5,
+        "slope": 0.003,
+        "runoffCoeff": 0.80,
+        "drainageCapacity": 0.60,
+        "baseRisk": "MODERATE",
+        "catchmentArea": 10.0,
+        "historicalFlood": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3480, 22.5630],
+          [88.3520, 22.5640],
+          [88.3580, 22.5655]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_006",
+      "properties": {
+        "name": "EM Bypass",
+        "zone": "East",
+        "elevation": 7.2,
+        "slope": 0.010,
+        "runoffCoeff": 0.68,
+        "drainageCapacity": 1.20,
+        "baseRisk": "LOW",
+        "catchmentArea": 5.0,
+        "historicalFlood": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3870, 22.5200],
+          [88.3920, 22.5400],
+          [88.3960, 22.5600],
+          [88.3980, 22.5750]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_007",
+      "properties": {
+        "name": "Tollygunge Road",
+        "zone": "South",
+        "elevation": 5.5,
+        "slope": 0.006,
+        "runoffCoeff": 0.76,
+        "drainageCapacity": 0.70,
+        "baseRisk": "LOW",
+        "catchmentArea": 7.5,
+        "historicalFlood": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3450, 22.4950],
+          [88.3490, 22.5100],
+          [88.3520, 22.5250]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_008",
+      "properties": {
+        "name": "Kasba Road",
+        "zone": "South-East",
+        "elevation": 3.8,
+        "slope": 0.003,
+        "runoffCoeff": 0.85,
+        "drainageCapacity": 0.50,
+        "baseRisk": "HIGH",
+        "catchmentArea": 11.0,
+        "historicalFlood": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3750, 22.5200],
+          [88.3720, 22.5350],
+          [88.3700, 22.5450]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_009",
+      "properties": {
+        "name": "Bidhan Sarani",
+        "zone": "North-Central",
+        "elevation": 4.0,
+        "slope": 0.003,
+        "runoffCoeff": 0.83,
+        "drainageCapacity": 0.55,
+        "baseRisk": "HIGH",
+        "catchmentArea": 13.0,
+        "historicalFlood": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3650, 22.5900],
+          [88.3640, 22.5800],
+          [88.3629, 22.5726]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_010",
+      "properties": {
+        "name": "Salt Lake Bypass",
+        "zone": "East",
+        "elevation": 8.0,
+        "slope": 0.012,
+        "runoffCoeff": 0.65,
+        "drainageCapacity": 1.40,
+        "baseRisk": "LOW",
+        "catchmentArea": 4.5,
+        "historicalFlood": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3900, 22.5850],
+          [88.3870, 22.5720],
+          [88.3850, 22.5650]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_011",
+      "properties": {
+        "name": "Strand Road",
+        "zone": "West-Central",
+        "elevation": 2.5,
+        "slope": 0.001,
+        "runoffCoeff": 0.92,
+        "drainageCapacity": 0.30,
+        "baseRisk": "CRITICAL",
+        "catchmentArea": 20.0,
+        "historicalFlood": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3350, 22.5700],
+          [88.3380, 22.5620],
+          [88.3410, 22.5520]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_012",
+      "properties": {
+        "name": "Rashbehari Avenue",
+        "zone": "South-Central",
+        "elevation": 5.8,
+        "slope": 0.007,
+        "runoffCoeff": 0.74,
+        "drainageCapacity": 0.80,
+        "baseRisk": "MODERATE",
+        "catchmentArea": 8.0,
+        "historicalFlood": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [88.3560, 22.5250],
+          [88.3590, 22.5380],
+          [88.3610, 22.5480]
+        ]
+      }
+    }
+  ]
+}

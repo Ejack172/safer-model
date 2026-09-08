@@ -1,0 +1,21 @@
+{
+  "current": {
+    "intensity": 24,
+    "unit": "mm/hr",
+    "description": "Heavy Rain",
+    "timestamp": "2026-09-04T11:50:00Z"
+  },
+  "forecast": [
+    { "label": "Now",  "hour": 0, "intensity": 24 },
+    { "label": "+1h",  "hour": 1, "intensity": 32 },
+    { "label": "+2h",  "hour": 2, "intensity": 28 },
+    { "label": "+3h",  "hour": 3, "intensity": 18 }
+  ],
+  "metadata": {
+    "source": "SIMULATED",
+    "note": "SIH 2026 Prototype – Simulated Data. Not for operational use.",
+    "station": "Kolkata IMD (Simulated)",
+    "runoffCoefficient": 0.82,
+    "catchmentArea": 185
+  }
+}

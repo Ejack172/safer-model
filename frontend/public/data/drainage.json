@@ -1,0 +1,67 @@
+[
+  {
+    "id": "d001",
+    "name": "College Street",
+    "zone": "Central",
+    "lat": 22.5726,
+    "lng": 88.3629,
+    "capacity": 0.45,
+    "baseStress": 78,
+    "status": "HIGH",
+    "description": "Reduced capacity",
+    "historicalIssues": true,
+    "notes": "Old colonial-era drainage, frequently overwhelmed during monsoon"
+  },
+  {
+    "id": "d002",
+    "name": "Esplanade",
+    "zone": "Central",
+    "lat": 22.5630,
+    "lng": 88.3490,
+    "capacity": 0.60,
+    "baseStress": 62,
+    "status": "MODERATE",
+    "description": "Working normally",
+    "historicalIssues": false,
+    "notes": "Upgraded drainage, handles moderate loads"
+  },
+  {
+    "id": "d003",
+    "name": "Park Street",
+    "zone": "South-Central",
+    "lat": 22.5525,
+    "lng": 88.3550,
+    "capacity": 0.90,
+    "baseStress": 40,
+    "status": "NORMAL",
+    "description": "Good condition",
+    "historicalIssues": false,
+    "notes": "Recently upgraded infrastructure, good drainage capacity"
+  },
+  {
+    "id": "d004",
+    "name": "Sealdah",
+    "zone": "East-Central",
+    "lat": 22.5660,
+    "lng": 88.3740,
+    "capacity": 0.35,
+    "baseStress": 85,
+    "status": "HIGH",
+    "description": "Water logging reported",
+    "historicalIssues": true,
+    "notes": "Dense urban area, inadequate drainage, frequent waterlogging"
+  },
+  {
+    "id": "d005",
+    "name": "Howrah",
+    "zone": "West",
+    "lat": 22.5850,
+    "lng": 88.3271,
+    "capacity": 0.82,
+    "baseStress": 58,
+    "status": "MODERATE",
+    "description": "Monitor closely",
+    "historicalIssues": false,
+    "notes": "Riverside location, stress increases with heavy rainfall"
+  }
+]
