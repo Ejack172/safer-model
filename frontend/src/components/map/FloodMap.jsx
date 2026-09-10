@@ -2,14 +2,15 @@
  * FloodMap.jsx — MapLibre GL flood risk road overlay
  * SIH 2026 Prototype · Simulated Data
  *
- * Key design decisions:
- * - Map is initialised once (guarded by initializedRef).
- * - `roadsRef` always holds the latest road features so the map.on('load')
- *   callback — which closes over the initial render — can still access
- *   current data. This solves the stale-closure race condition.
- * - Roads GeoJSON source is updated via setData() whenever the store's
- *   `roads` array changes (i.e. after every rainfall model recompute).
- * - Color is ALWAYS derived from computedRisk — never cached .color.
+ * Architecture:
+ * - Map is created once in a useEffect (guarded by initializedRef).
+ * - Inside the map 'load' handler, we subscribe DIRECTLY to the Zustand
+ *   store using useAppStore.subscribe(). This completely bypasses React's
+ *   useEffect/batching system and fires synchronously on every store update.
+ * - Road layer uses a MapLibre `match` expression on the `computedRisk`
+ *   property directly — NOT on a derived `color` string — so color can
+ *   never be stale or undefined.
+ * - After every setData(), triggerRepaint() is called to force a redraw.
  */
 import React, { useEffect, useRef } from 'react';
 import * as maplibregl from 'maplibre-gl';
@@ -23,11 +24,8 @@ const SAFE_ROUTE_GEOJSON = {
   geometry: {
     type: 'LineString',
     coordinates: [
-      [88.3629, 22.5726],
-      [88.3490, 22.5630],
-      [88.3550, 22.5525],
-      [88.3650, 22.5480],
-      [88.3839, 22.5421],
+      [88.3629, 22.5726], [88.3490, 22.5630],
+      [88.3550, 22.5525], [88.3650, 22.5480], [88.3839, 22.5421],
     ],
   },
 };
@@ -37,10 +35,8 @@ const AVOIDED_ROUTE_GEOJSON = {
   geometry: {
     type: 'LineString',
     coordinates: [
-      [88.3629, 22.5726],
-      [88.3680, 22.5750],
-      [88.3740, 22.5660],
-      [88.3839, 22.5421],
+      [88.3629, 22.5726], [88.3680, 22.5750],
+      [88.3740, 22.5660], [88.3839, 22.5421],
     ],
   },
 };
@@ -52,7 +48,19 @@ const WARNING_MARKERS = [
   { lng: 88.3720, lat: 22.5350, label: 'Kasba',         risk: 'HIGH'     },
 ];
 
-// ── Map style (OSM raster) ────────────────────────────────────────────────────
+// ── Risk color — MapLibre `match` expression (used in paint property) ─────────
+// This is evaluated GPU-side per feature. Works even if no `color` property.
+const RISK_MATCH_EXPR = [
+  'match',
+  ['coalesce', ['get', 'computedRisk'], ['get', 'baseRisk'], 'LOW'],
+  'LOW',      '#16a34a',
+  'MODERATE', '#ca8a04',
+  'HIGH',     '#ea580c',
+  'CRITICAL', '#dc2626',
+  /* fallback */ '#6b7280',
+];
+
+// ── OSM map style ─────────────────────────────────────────────────────────────
 function buildMapStyle() {
   return {
     version: 8,
@@ -61,7 +69,7 @@ function buildMapStyle() {
         type: 'raster',
         tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
-        attribution: '© OpenStreetMap contributors | SIH 2026 – Simulated Data',
+        attribution: '© OpenStreetMap contributors | SIH 2026 Prototype – Simulated Data',
         maxzoom: 19,
       },
     },
@@ -70,9 +78,9 @@ function buildMapStyle() {
 }
 
 /**
- * Build a GeoJSON FeatureCollection from the store's road features.
- * ALWAYS derives `color` from `computedRisk` — never the cached property —
- * so that every setData() call uses the latest model output.
+ * Convert store roads array → MapLibre GeoJSON FeatureCollection.
+ * Sets `computedRisk` and `baseRisk` as feature properties so the
+ * RISK_MATCH_EXPR layer expression can read them directly.
  */
 function buildRoadsGeoJSON(features) {
   return {
@@ -82,9 +90,11 @@ function buildRoadsGeoJSON(features) {
       id: f.id,
       geometry: f.geometry,
       properties: {
+        // Preserve all original + computed properties
         ...f.properties,
-        // Fresh color every time — computedRisk is set by recomputeModel()
-        color: getRiskColor(f.properties.computedRisk || f.properties.baseRisk || 'LOW'),
+        // Ensure the match expression properties are always present
+        computedRisk: f.properties.computedRisk || f.properties.baseRisk || 'LOW',
+        baseRisk:     f.properties.baseRisk || 'LOW',
       },
     })),
   };
@@ -96,24 +106,19 @@ export default function FloodMap({ showRoute = false, mobile = false }) {
   const mapRef         = useRef(null);
   const markersRef     = useRef([]);
   const popupRef       = useRef(null);
-  const initializedRef = useRef(false); // prevents double-init in React StrictMode
+  const initializedRef = useRef(false);
 
-  // ── Always-current refs (read inside event handlers / callbacks) ──────────
-  const roadsRef       = useRef([]);    // latest roads — avoids stale closure in load handler
-  const showRouteRef   = useRef(showRoute);
-  const selectRoadRef  = useRef(null);
-
-  // Subscribe to store
-  const roads          = useAppStore(s => s.roads);
+  // We still subscribe to these for the route/selectRoad effects
   const showRouteOnMap = useAppStore(s => s.showRouteOnMap) || showRoute;
   const selectRoad     = useAppStore(s => s.selectRoad);
 
-  // Keep refs in sync every render
-  roadsRef.current      = roads;
+  // Refs so callbacks always see latest values without stale closures
+  const showRouteRef  = useRef(showRouteOnMap);
+  const selectRoadRef = useRef(selectRoad);
   showRouteRef.current  = showRouteOnMap;
   selectRoadRef.current = selectRoad;
 
-  // ── Initialise map ONCE ────────────────────────────────────────────────────
+  // ── ONE-TIME MAP INIT ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || initializedRef.current) return;
     initializedRef.current = true;
@@ -133,16 +138,48 @@ export default function FloodMap({ showRoute = false, mobile = false }) {
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('load', () => {
-      // Use roadsRef.current (always fresh) — NOT the stale closure value
-      addRoadLayersToMap(map, roadsRef.current, mobile, selectRoadRef, popupRef);
+      // ── Step 1: Add road layers with CURRENT store data ──────────────────
+      const currentRoads = useAppStore.getState().roads;
+      console.log('[SAFER FloodMap] map loaded, roads in store:', currentRoads.length);
+      addRoadLayers(map, currentRoads, mobile, selectRoadRef, popupRef);
+
+      // ── Step 2: Subscribe to store so future road changes update the map ─
+      // This fires SYNCHRONOUSLY on every roads update — no React lifecycle delays.
+      const unsubscribeRoads = useAppStore.subscribe(
+        state => state.roads,
+        (latestRoads) => {
+          if (latestRoads.length === 0) return;
+          const src = map.getSource('roads');
+          if (!src) {
+            // Source was removed somehow — re-add everything
+            addRoadLayers(map, latestRoads, mobile, selectRoadRef, popupRef);
+            return;
+          }
+          console.log('[SAFER FloodMap] setData() called, features:', latestRoads.length,
+            'sample computedRisk:', latestRoads[0]?.properties?.computedRisk);
+          src.setData(buildRoadsGeoJSON(latestRoads));
+          map.triggerRepaint();
+        }
+      );
+
+      // ── Step 3: Markers ───────────────────────────────────────────────────
       setupMarkers(map, markersRef);
+
+      // ── Step 4: Route overlay if already active ───────────────────────────
       if (showRouteRef.current) setupRouteLayers(map);
+
+      // ── Store unsubscribe so cleanup can call it ──────────────────────────
+      map._saferUnsubscribeRoads = unsubscribeRoads;
     });
 
     mapRef.current = map;
 
     return () => {
       if (mapRef.current) {
+        // Clean up Zustand subscription before destroying map
+        if (mapRef.current._saferUnsubscribeRoads) {
+          mapRef.current._saferUnsubscribeRoads();
+        }
         mapRef.current.remove();
         mapRef.current = null;
       }
@@ -150,43 +187,14 @@ export default function FloodMap({ showRoute = false, mobile = false }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Update road colors whenever the store recomputes ───────────────────────
-  // This fires on every rainfall slider change (after recomputeModel sets roads).
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || roads.length === 0) return;
-
-    const applyRoadData = () => {
-      const geojson = buildRoadsGeoJSON(roads);
-      const src = map.getSource('roads');
-      if (src) {
-        // Fast path: source exists → just push new data, MapLibre re-renders
-        src.setData(geojson);
-      } else {
-        // Slow path: map loaded but source missing (e.g. first data arrival
-        // happened before load event fired) → add everything now
-        addRoadLayersToMap(map, roads, mobile, selectRoadRef, popupRef);
-      }
-    };
-
-    if (map.isStyleLoaded()) {
-      applyRoadData();
-    } else {
-      // Wait for load, then apply (handles first-load race)
-      map.once('load', applyRoadData);
-    }
-  }, [roads]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Toggle safer-route overlay ─────────────────────────────────────────────
+  // ── Route overlay toggle ───────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-
     const apply = () => {
       if (showRouteOnMap) setupRouteLayers(map);
       else removeRouteLayers(map);
     };
-
     if (map.isStyleLoaded()) apply();
     else map.once('load', apply);
   }, [showRouteOnMap]);
@@ -194,61 +202,72 @@ export default function FloodMap({ showRoute = false, mobile = false }) {
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
 }
 
-// ── Pure map helpers (no React hooks, no stale closures) ──────────────────────
+// ── Pure helpers ──────────────────────────────────────────────────────────────
 
 /**
- * Add roads GeoJSON source + two line layers (glow + main) to the map.
- * Guard prevents adding twice.
+ * Add the roads GeoJSON source and THREE line layers to the map.
+ * Called once after map load (and again on remount if source was lost).
+ *
+ * Layer stack (bottom → top):
+ *   roads-glow   — wide, blurred halo for the risk color
+ *   roads-layer  — solid main line (unmissable 10px)
  */
-function addRoadLayersToMap(map, roads, mobile, selectRoadRef, popupRef) {
-  if (!map || map.getSource('roads')) return; // already added
+function addRoadLayers(map, roads, mobile, selectRoadRef, popupRef) {
+  if (!map || map.getSource('roads')) return;
 
-  map.addSource('roads', {
-    type: 'geojson',
-    data: buildRoadsGeoJSON(roads),
-  });
+  const geojson = buildRoadsGeoJSON(roads);
+  console.log('[SAFER FloodMap] addRoadLayers, features:', geojson.features.length,
+    'sample risk:', geojson.features[0]?.properties?.computedRisk);
 
-  // Soft glow behind the road line (wider, blurred, semi-transparent)
+  map.addSource('roads', { type: 'geojson', data: geojson });
+
+  // Glow layer (wide, blurred halo)
   map.addLayer({
     id: 'roads-glow',
     type: 'line',
     source: 'roads',
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
-      'line-color': ['get', 'color'],
-      'line-width': mobile ? 14 : 18,
-      'line-blur': 10,
-      'line-opacity': 0.30,
+      'line-color': RISK_MATCH_EXPR,
+      'line-width': mobile ? 16 : 22,
+      'line-blur': 12,
+      'line-opacity': 0.35,
     },
   });
 
-  // Main solid road line — thick enough to be unmissable
+  // Main solid road line — thick enough to be unmissable at any zoom
   map.addLayer({
     id: 'roads-layer',
     type: 'line',
     source: 'roads',
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
-      'line-color': ['get', 'color'],
-      'line-width': mobile ? 6 : 8,
+      'line-color': RISK_MATCH_EXPR,
+      'line-width': mobile ? 7 : 10,
       'line-opacity': 1.0,
     },
   });
 
-  // Thin dark outline beneath — improves contrast against any map background
+  // Road name labels
   map.addLayer({
-    id: 'roads-outline',
-    type: 'line',
+    id: 'roads-labels',
+    type: 'symbol',
     source: 'roads',
-    layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint: {
-      'line-color': '#000000',
-      'line-width': mobile ? 8 : 11,
-      'line-opacity': 0.15,
+    layout: {
+      'text-field': ['get', 'name'],
+      'text-size': 10,
+      'symbol-placement': 'line',
+      'text-font': ['literal', ['Open Sans Regular']],
+      'text-offset': [0, -1],
     },
-  }, 'roads-glow'); // insert below glow layer
+    paint: {
+      'text-color': '#0f172a',
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 2,
+    },
+  });
 
-  // Click → open popup + select road in store
+  // Click → select + popup
   map.on('click', 'roads-layer', e => {
     const feature = e.features && e.features[0];
     if (!feature) return;
@@ -259,27 +278,20 @@ function addRoadLayersToMap(map, roads, mobile, selectRoadRef, popupRef) {
   map.on('mouseleave', 'roads-layer', () => { map.getCanvas().style.cursor = ''; });
 }
 
-/**
- * Show a rich popup for a clicked road feature.
- * Reads `computedRisk` (live) with fallback to `baseRisk`.
- */
 function showRoadPopup(map, feature, lngLat, popupRef) {
   if (popupRef.current) { popupRef.current.remove(); popupRef.current = null; }
   const p = feature.properties;
   const risk = p.computedRisk || p.baseRisk || 'LOW';
   const color = getRiskColor(risk);
 
-  const popup = new maplibregl.Popup({
-    closeButton: true, closeOnClick: false, maxWidth: '280px', offset: 6,
-  })
+  const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '280px', offset: 6 })
     .setLngLat(lngLat)
     .setHTML(`
       <div style="font-family:'Inter',system-ui,sans-serif;padding:14px 16px;">
         <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:8px;">${p.name}</div>
-        <div style="display:inline-flex;align-items:center;gap:5px;
-                    background:${color}18;color:${color};
-                    font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;
-                    margin-bottom:12px;border:1px solid ${color}33;">
+        <div style="display:inline-flex;align-items:center;gap:5px;background:${color}18;color:${color};
+                    font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;margin-bottom:12px;
+                    border:1px solid ${color}33;">
           <span style="width:7px;height:7px;background:${color};border-radius:50%;display:inline-block;"></span>
           ${risk} RISK
         </div>
@@ -301,11 +313,9 @@ function showRoadPopup(map, feature, lngLat, popupRef) {
       </div>
     `)
     .addTo(map);
-
   popupRef.current = popup;
 }
 
-/** Add warning markers + pulsing location dot */
 function setupMarkers(map, markersRef) {
   markersRef.current.forEach(m => m.remove());
   markersRef.current = [];
@@ -314,34 +324,26 @@ function setupMarkers(map, markersRef) {
     const color = getRiskColor(wm.risk);
     const el = document.createElement('div');
     el.style.cssText = `
-      width:30px;height:30px;
-      background:${color};border:2.5px solid white;border-radius:50%;
-      display:flex;align-items:center;justify-content:center;
-      color:white;font-size:13px;font-weight:700;
-      box-shadow:0 2px 10px ${color}88;cursor:pointer;
+      width:30px;height:30px;background:${color};border:2.5px solid white;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;color:white;font-size:13px;
+      font-weight:700;box-shadow:0 2px 10px ${color}88;cursor:pointer;
       transition:transform 0.15s;user-select:none;
     `;
     el.textContent = '⚠';
     el.title = `${wm.label} — ${wm.risk} Flood Risk`;
     el.onmouseenter = () => { el.style.transform = 'scale(1.25)'; };
     el.onmouseleave = () => { el.style.transform = ''; };
-    markersRef.current.push(
-      new maplibregl.Marker({ element: el }).setLngLat([wm.lng, wm.lat]).addTo(map)
-    );
+    markersRef.current.push(new maplibregl.Marker({ element: el }).setLngLat([wm.lng, wm.lat]).addTo(map));
   });
 
-  // Current location pulse
   injectPulseCSS();
   const locEl = document.createElement('div');
   locEl.style.cssText = `
-    width:18px;height:18px;background:#2563eb;
-    border:3px solid white;border-radius:50%;
+    width:18px;height:18px;background:#2563eb;border:3px solid white;border-radius:50%;
     box-shadow:0 0 0 8px rgba(37,99,235,0.2),0 2px 8px rgba(0,0,0,0.3);
     animation:saferpulse 2s ease infinite;
   `;
-  markersRef.current.push(
-    new maplibregl.Marker({ element: locEl }).setLngLat([88.3629, 22.5726]).addTo(map)
-  );
+  markersRef.current.push(new maplibregl.Marker({ element: locEl }).setLngLat([88.3629, 22.5726]).addTo(map));
 }
 
 function injectPulseCSS() {
@@ -360,20 +362,14 @@ function injectPulseCSS() {
 function setupRouteLayers(map) {
   if (!map || !map.isStyleLoaded()) return;
   removeRouteLayers(map);
-
-  map.addSource('safe-route', { type: 'geojson', data: SAFE_ROUTE_GEOJSON });
-  map.addLayer({
-    id: 'safe-route-line', type: 'line', source: 'safe-route',
+  map.addSource('safe-route',    { type: 'geojson', data: SAFE_ROUTE_GEOJSON });
+  map.addLayer({ id: 'safe-route-line',    type: 'line', source: 'safe-route',
     layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint: { 'line-color': '#2563eb', 'line-width': 5, 'line-opacity': 0.92 },
-  });
-
+    paint: { 'line-color': '#2563eb', 'line-width': 5, 'line-opacity': 0.92 } });
   map.addSource('avoided-route', { type: 'geojson', data: AVOIDED_ROUTE_GEOJSON });
-  map.addLayer({
-    id: 'avoided-route-line', type: 'line', source: 'avoided-route',
+  map.addLayer({ id: 'avoided-route-line', type: 'line', source: 'avoided-route',
     layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint: { 'line-color': '#dc2626', 'line-width': 4, 'line-opacity': 0.85, 'line-dasharray': [4, 3] },
-  });
+    paint: { 'line-color': '#dc2626', 'line-width': 4, 'line-opacity': 0.85, 'line-dasharray': [4, 3] } });
 }
 
 function removeRouteLayers(map) {
