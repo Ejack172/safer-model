@@ -63,7 +63,9 @@ function buildRoadsGeoJSON(features) {
       ...f,
       properties: {
         ...f.properties,
-        color: f.properties.color || getRiskColor(f.properties.baseRisk || 'LOW'),
+        // ALWAYS recompute color from the current risk level — never use the stale
+        // cached .color property, which would prevent map updates when rainfall changes.
+        color: getRiskColor(f.properties.computedRisk || f.properties.baseRisk || 'LOW'),
       },
     })),
   };
