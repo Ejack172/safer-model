@@ -29,8 +29,11 @@ export default function App() {
       .then(([roadsData, drainageData]) => {
         setRoads(roadsData.features || []);
         setDrainagePoints(drainageData);
-        // Initial model computation
-        setTimeout(recomputeModel, 100);
+        // First pass: compute model immediately so store has riskLevels
+        setTimeout(recomputeModel, 50);
+        // Second pass: re-push data after MapLibre has processed the source
+        // (covers the edge case where setData fires before the map 'load' event)
+        setTimeout(recomputeModel, 800);
       })
       .catch(err => console.error('SAFER: Data load failed:', err));
   }, []);
